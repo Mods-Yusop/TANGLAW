@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Student {
+  id            String        @id
+  firstName     String
+  middleInitial String?
+  lastName      String
+  college       String
+  program       String
+  yearLevel     Int
+  section       String
+  
+  // Payment Tracking
+  packageType   PackageType?
+  totalPaid     Decimal       @default(0)
+  balance       Decimal       @default(0)
+  paymentStatus PaymentStatus @default(UNPAID)
+
+  transactions  Transaction[]
+}
+
+model Staff {
+  id           Int           @id @default(autoincrement())
+  name         String
+  position     String
+  username     String        @unique
+  password     String        // Hashed
+  role         Role          @default(STAFF)
+  
+  transactions Transaction[]
+  auditLogs    AuditLog[]
+}
+
+model Transaction {
+  id              Int         @id @default(autoincrement())
+  student         Student     @relation(fields: [studentId], references: [id])
+  studentId       String
+  staff           Staff       @relation(fields: [staffId], references: [id])
+  staffId         Int
+  
+  // Transaction Details
+  amountPaid      Decimal
+  paymentMode     PaymentMode
+  orNumber        String      // Receipt or Ref Number
+  packageTypeSnapshot PackageType? // To know what package they were paying for at this time
+
+  isVoid          Boolean     @default(false)
+  
+  createdAt       DateTime    @default(now())
+}
+
+model AuditLog {
+  id          Int      @id @default(autoincrement())
+  staff       Staff    @relation(fields: [staffId], references: [id])
+  staffId     Int
+  actionType  String
+  description String
+  createdAt   DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum PackageType {
+  A
+  B
+  C
+}
+
+enum PaymentMode {
+  CASH
+  BANK_TRANSFER
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIAL
+  FULLY_PAID
+}
