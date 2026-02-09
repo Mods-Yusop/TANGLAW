@@ -5,12 +5,12 @@ currentDir = fso.GetParentFolderName(WScript.ScriptFullName)
 ' Start Server (hidden)
 ' We assume the folder 'server' exists in the same directory as this script
 WshShell.CurrentDirectory = currentDir & "\server"
-WshShell.Run "cmd /c npm run dev", 0, False
+WshShell.Run "cmd /c npm run dev", 1, False
 
 ' Start Client (hidden)
 ' We assume the folder 'client' exists in the same directory as this script
 WshShell.CurrentDirectory = currentDir & "\client"
-WshShell.Run "cmd /c npm run dev", 0, False
+WshShell.Run "cmd /c npm run dev", 1, False
 
 ' Wait 5 seconds for the servers to initialize
 WScript.Sleep 5000

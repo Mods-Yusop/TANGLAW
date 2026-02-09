@@ -34,7 +34,16 @@ router.get('/csv', async (req, res) => {
         // Group transactions by college
         const collegeMap: Record<string, typeof transactions> = {};
         transactions.forEach((tx) => {
-            const college = tx.student.college;
+            let college = tx.student.college;
+
+            // ---------------------------------------------------------
+            // Normalization for Export Grouping
+            // ---------------------------------------------------------
+            if (college === 'CVM - AC') {
+                college = 'CVM - Aleosan Campus';
+            }
+            // ---------------------------------------------------------
+
             if (!collegeMap[college]) {
                 collegeMap[college] = [];
             }
@@ -52,7 +61,7 @@ router.get('/csv', async (req, res) => {
         for (const [college, collegeTxs] of Object.entries(collegeMap)) {
             // Sort by program within each college
             const sortedTxs = collegeTxs.sort((a, b) =>
-                a.student.program.localeCompare(b.student.program)
+                (a.student.program || '').localeCompare(b.student.program || '')
             );
 
             const sheet = workbook.addWorksheet(college);
@@ -103,15 +112,15 @@ router.get('/csv', async (req, res) => {
                 sheet.addRow([
                     tx.id,
                     tx.studentId,
-                    `${tx.student.firstName} ${tx.student.lastName}`,
-                    tx.student.program,
+                    `${tx.student.firstName || ''} ${tx.student.lastName || ''}`,
+                    tx.student.program || '-',
                     tx.packageTypeSnapshot || '-',
-                    parseFloat(tx.amountPaid.toString()),
-                    parseFloat(tx.student.balance.toString()),
+                    parseFloat(tx.amountPaid?.toString() || '0'),
+                    parseFloat((tx.student.balance || 0).toString()),
                     tx.paymentMode,
                     tx.orNumber,
-                    tx.student.paymentStatus,
-                    tx.staff.name,
+                    tx.student.paymentStatus || 'UNKNOWN',
+                    tx.staff ? tx.staff.name : 'Unknown',
                     date,
                     time
                 ]);
@@ -132,9 +141,9 @@ router.get('/csv', async (req, res) => {
         res.attachment(`tanglaw_collection_${new Date().toISOString().split('T')[0]}.xlsx`);
         res.send(buffer);
 
-    } catch (error) {
+    } catch (error: any) {
         console.error(error);
-        res.status(500).send('Export failed');
+        res.status(500).json({ error: error.message || 'Export failed' });
     }
 });
 

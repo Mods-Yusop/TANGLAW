@@ -1,4 +1,5 @@
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import https from 'https';
 import fs from 'fs';
@@ -8,6 +9,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 import studentRoutes from './routes/student.routes';
 import transactionRoutes from './routes/transaction.routes';
@@ -33,7 +35,7 @@ export const io = new SocketIOServer({
 export let server: https.Server;
 
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Middleware
 app.use(cors({
@@ -54,9 +56,23 @@ app.use('/api/audit', auditRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-app.get('/', (req, res) => {
-  res.send('TANGLAW POS API is running (HTTPS)');
-});
+// --- SERVE FRONTEND (Production Mode) ---
+const distPath = path.join(process.cwd(), '../client/dist');
+
+if (fs.existsSync(distPath)) {
+  console.log('📦 Hosting React Frontend from:', distPath);
+  app.use(express.static(distPath));
+
+  // Serve index.html for any unknown routes (Client-side routing)
+  app.get(/.*/, (req, res) => {
+    if (req.path.startsWith('/api')) return res.status(404).send('API Not Found');
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+} else {
+  app.get('/', (req, res) => {
+    res.send(`TANGLAW POS API (Dev Mode) - Frontend not built. <br> Checked path: ${distPath}`);
+  });
+}
 
 // Async Bootstrap
 async function bootstrap() {
@@ -98,8 +114,29 @@ async function bootstrap() {
     await prisma.$connect();
     console.log('Connected to Database');
 
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', async () => {
       console.log(`Server is running on HTTPS port ${PORT}`);
+
+      // Auto-Fix Admin PIN
+      try {
+        const admin = await prisma.staff.findFirst({ where: { role: 'ADMIN' } });
+        if (admin) {
+          const isMatch = await bcrypt.compare('024434', admin.password);
+          if (!isMatch) {
+            console.log('⚠️  Admin PIN mismatch detected. Auto-fixing to default...');
+            const newHash = await bcrypt.hash('024434', 10);
+            await prisma.staff.update({
+              where: { id: admin.id },
+              data: { password: newHash }
+            });
+            console.log('✅ Admin PIN auto-corrected to 024434');
+          } else {
+            console.log('✅ Admin PIN is correct.');
+          }
+        }
+      } catch (err) {
+        console.error('Failed to auto-check Admin PIN:', err);
+      }
     });
 
   } catch (err) {

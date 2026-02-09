@@ -41,8 +41,27 @@ router.post('/', async (req, res) => {
         console.log('Received Payload:', req.body);
         console.log('New Student Details:', newStudentDetails);
 
+        // 0. Pre-checks
+        // Check for duplicate OR Number across ALL transactions
+        const existingTx = await prisma.transaction.findFirst({
+            where: {
+                orNumber: orNumber,
+                isVoid: false // Only check against non-voided transactions
+            }
+        });
+        if (existingTx) {
+            return res.status(400).json({ error: `OR Number ${orNumber} already exists in the system.` });
+        }
+
         // 1. Find or Create Student
         let student = await prisma.student.findUnique({ where: { id: studentId } });
+
+        // Check for duplicate Student ID if user intends to create NEW student
+        if (student && req.body.isNewStudent) {
+            return res.status(400).json({
+                error: `Student ID ${studentId} already exists. Please search for the student instead of creating a new record.`
+            });
+        }
 
         if (!student) {
             if (!newStudentDetails) {

@@ -8,9 +8,11 @@ import { io } from 'socket.io-client';
 
 // Dynamic API URL for LAN support
 // Dynamic API URL for LAN support (HTTPS)
+const isProduction = import.meta.env.PROD;
 const HOST = window.location.hostname;
-const API_URL = `https://${HOST}:3000/api`;
-const SOCKET_URL = `https://${HOST}:3000`;
+
+const API_URL = isProduction ? '/api' : `https://${HOST}:3000/api`;
+const SOCKET_URL = isProduction ? '/' : `https://${HOST}:3000`;
 
 // Enable credentials for cookies
 axios.defaults.withCredentials = true;
@@ -81,7 +83,7 @@ const COLLEGE_PROGRAMS: Record<string, string[]> = {
     "Bachelor of Science in Accountancy (BSAccnty)",
     "Bachelor of Science in Agribusiness (BSAgriBus)",
     "Bachelor of Science in Agricultural Economics (BSAgEcon)",
-    "Bachelor of Science in Business Administration",
+    "Bachelor of Science in Business Administration (BSBA)",
     "Bachelor of Public Administration (BPAd)",
     "Bachelor of Science in Management Accounting (BSMA)"
   ],
@@ -100,7 +102,7 @@ const COLLEGE_PROGRAMS: Record<string, string[]> = {
   "CA": [
     "Certificate in Agricultural Science (2nd year BSA)",
     "Bachelor of Science in Agriculture (BSA)",
-    "Bachelor of Science in Agricultural Technology",
+    "Bachelor of Science in Agricultural Technology (BSAgriTech)",
     "Bachelor of Science in Fisheries (BSF)"
   ],
   "CA - Libungan Campus": [
@@ -117,7 +119,7 @@ const COLLEGE_PROGRAMS: Record<string, string[]> = {
   ],
   "CHK": [
     "Bachelor of Physical Education (BPE)",
-    "Bachelor of Science in Exercise and Sports Sciences"
+    "Bachelor of Science in Exercise and Sports Sciences (BSESS)"
   ],
   "CED": [
     "Bachelor of Elementary Education (BEED)",
@@ -184,7 +186,7 @@ const COLLEGE_PROGRAMS: Record<string, string[]> = {
   "CSM": [
     "Bachelor of Science in Environmental Science (BSEnS)",
     "Bachelor of Science in Chemistry (BSChem)",
-    "Bachelor of Science in Microbiology",
+    "Bachelor of Science in Microbiology(BSMicrobio)",
     "Bachelor of Science in Biology (BSBio)",
     "Bachelor of Science in Applied Mathematics (BSAM)",
     "Bachelor of Science in Applied Physics (BSAP)"
@@ -500,6 +502,9 @@ function App() {
           yearLevel: yearLevel || 1,
           section: section || 'N/A'
         }
+        // Send flag to enforce uniqueness check if user intends to create new
+        payload.isNewStudent = isNewStudent;
+
         await axios.post(`${API_URL}/transactions`, payload)
 
       }
@@ -513,8 +518,63 @@ function App() {
     }
   }
 
-  const handleExport = () => {
-    window.open(`${API_URL}/export/csv?staffId=${currentStaff?.id || 1}`, '_blank')
+  // College Synonyms for Ledger Display & Filtering
+  const COLLEGE_SYNONYMS: Record<string, string> = {
+    'CBDEM-LC': 'CBDEM',
+    'CASS-LC': 'CASS',
+    'CA-LC': 'CA',
+    'CHEFS-LC': 'CHEFS',
+    'CED-LC': 'CED',
+    'CVM-AL': 'CVM',
+    'CED-AL': 'CED',
+    'GS': 'Graduate School'
+  };
+
+  const normalizeCollege = (c: string) => COLLEGE_SYNONYMS[c] || c;
+
+  const formatProgram = (fullProgram: string) => {
+    if (!fullProgram) return '';
+    const match = fullProgram.match(/\(([^)]+)\)/);
+    if (match) return match[1]; // Found inside ()
+
+    // Reverse lookup
+    for (const programs of Object.values(COLLEGE_PROGRAMS)) {
+      const found = programs.find(p => p.includes(fullProgram) || p.startsWith(fullProgram));
+      if (found) {
+        const m = found.match(/\(([^)]+)\)/);
+        if (m) return m[1];
+      }
+    }
+    return fullProgram;
+  };
+
+  const handleExport = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/export/csv?staffId=${currentStaff?.id || 1}`, {
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `tanglaw_report_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error: any) {
+      console.error("Export failed:", error);
+      // Try to read blob error
+      if (error.response?.data instanceof Blob) {
+        const text = await error.response.data.text();
+        try {
+          const json = JSON.parse(text);
+          alert(`Export Failed: ${json.error}`);
+        } catch {
+          alert(`Export Failed: ${text}`);
+        }
+      } else {
+        alert("Failed to download report. Check server logs.");
+      }
+    }
   }
 
   // --- Session Management ---
@@ -671,7 +731,27 @@ function App() {
       tx.student.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       `${tx.student.firstName} ${tx.student.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
       tx.orNumber.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesCollege = collegeFilter === 'All Colleges' || tx.student.college === collegeFilter
+
+    // Normalize college from DB to match Filter (which uses keys from COLLEGE_PROGRAMS)
+    const txCollege = normalizeCollege(tx.student.college);
+    // Partial match to handle "CASS" vs "CASS - Libungan" if desired, or strict match
+    // Let's do: if filter is 'All', pass. If filter is selected, check if txCollege starts with filter or equals it.
+    // Actually, simple equality on normalized value is safest if keys align.
+
+    // If filter is specific (e.g. "CBDEM"), allow "CBDEM" and "CBDEM-LC" (which normalizes to CBDEM)
+    // But wait, the dropdown has specific campuses too.
+    // If user filters "CBDEM - Libungan Campus", we want DB "CBDEM-LC".
+    // My synonym map loses the "Libungan" distinction if I map everything to "CBDEM".
+    // Better logic: Only use synonyms for DISPLAY or grouped filtering.
+    // Let's refine the synonym map usage:
+    // If I map 'CBDEM-LC' -> 'CBDEM', I lose granularity.
+    // Let's KEEP the granular filter for now and just fix the "Full Meaning" display issue which was user's complaint.
+    // AND ensure the generic 'CBDEM' filter picks up 'CBDEM-LC' if that's what they want.
+
+    const matchesCollege = collegeFilter === 'All Colleges' ||
+      tx.student.college === collegeFilter ||
+      normalizeCollege(tx.student.college) === collegeFilter;
+
     const matchesPaymentMode = paymentModeFilter === 'All Modes' || tx.paymentMode === paymentModeFilter
     return matchesSearch && matchesCollege && matchesPaymentMode
   })
@@ -862,23 +942,31 @@ function App() {
                 </thead>
                 <tbody className="text-sm text-gray-700">
                   {paginatedLedger.length === 0 ? (
-                    <tr><td colSpan={10} className="p-8 text-center text-gray-400 border border-gray-300">No transactions found.</td></tr>
+                    <tr>
+                      <td colSpan={10} className="p-8 text-center text-gray-400">
+                        No transactions found.
+                      </td>
+                    </tr>
                   ) : (
                     paginatedLedger.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-gray-50">
-                        <td className="p-3 border border-gray-300 text-xs">{new Date(tx.createdAt).toLocaleDateString()}</td>
+                      <tr key={tx.id} className="hover:bg-gray-50 border-b border-gray-100">
                         <td className="p-3 border border-gray-300">
-                          <div className="font-bold text-gray-900">{tx.student.firstName} {tx.student.middleInitial ? `${tx.student.middleInitial} ` : ''}{tx.student.lastName}</div>
-                          <div className="text-xs text-gray-500">{tx.student.id}</div>
+                          <div className="font-bold text-gray-800">{new Date(tx.createdAt).toLocaleDateString()}</div>
+                          <div className="text-xs text-gray-500">{new Date(tx.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                          <div className="text-xs text-gray-400 mt-1 uppercase">{tx.staff?.name.split(' ')[0] || 'UNKNOWN'}</div>
+                        </td>
+                        <td className="p-3 border border-gray-300">
+                          <div className="font-bold text-gray-900">{tx.student.firstName} {tx.student.lastName}</div>
+                          <div className="text-xs text-gray-500 font-mono">{tx.student.id}</div>
                         </td>
                         <td className="p-3 border border-gray-300 text-xs font-medium">
                           {tx.student.college === 'Graduate School'
-                            ? tx.student.program
-                            : <>{tx.student.yearLevel === 0 ? 'N/A' : tx.student.yearLevel} {tx.student.program} {tx.student.section}</>
+                            ? formatProgram(tx.student.program)
+                            : <>{tx.student.yearLevel === 0 ? 'N/A' : tx.student.yearLevel} {formatProgram(tx.student.program)} {tx.student.section}</>
                           }
                         </td>
-                        <td className="p-3 border border-gray-300 text-xs">{tx.student.college}</td>
-                        <td className="p-3 border border-gray-300">
+                        <td className="p-3 border border-gray-300 text-xs">{normalizeCollege(tx.student.college)}</td>
+                        <td className="p-3 border border-gray-300 text-center">
                           <span className={`px-2 py-0.5 rounded text-xs font-bold ${tx.packageTypeSnapshot === 'A' ? 'bg-blue-100 text-blue-700' : tx.packageTypeSnapshot === 'B' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
                             {tx.packageTypeSnapshot}
                           </span>
