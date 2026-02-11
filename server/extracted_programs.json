@@ -1,0 +1,137 @@
+{
+  "CASS": [
+    "Bachelor of Science in Criminology (BSCriminology)",
+    "Bachelor of Arts in English Language (ABEnglish)",
+    "Bachelor of Arts in Psychology (ABPsych)",
+    "Bachelor of Arts in Political Science (ABPolSci)",
+    "Bachelor of Science in Development Communication (BSDC)",
+    "Bachelor of Arts in Philosophy (ABPhilos)"
+  ],
+  "CASS - Libungan Campus": [
+    "Bachelor of Science in Criminology (BSCrim Libungan)"
+  ],
+  "CASS - Mlang Campus": [
+    "Bachelor of Science in Criminology (BSCrim Mlang)"
+  ],
+  "CBDEM": [
+    "Bachelor of Science in Accountancy (BSAccnty)",
+    "Bachelor of Science in Agribusiness (BSAgriBus)",
+    "Bachelor of Science in Agricultural Economics (BSAgEcon)",
+    "Bachelor of Science in Business Administration (BSBA)",
+    "Bachelor of Public Administration (BPAd)",
+    "Bachelor of Science in Management Accounting (BSMA)"
+  ],
+  "CBDEM - Libungan Campus": [
+    "Bachelor of Science in Business Administration (BSBA Libungan)"
+  ],
+  "CHEFS": [
+    "Bachelor of Science in Food Technology (BSFT)",
+    "Bachelor of Science in Hospitality Management (BSHM)",
+    "Bachelor of Science in Nutrition and Dietetics (BSND)",
+    "Bachelor of Science in Tourism Management (BSTM)"
+  ],
+  "CHEFS - Libungan": [
+    "Bachelor of Science in Hospitality Management (BSHM-Libungan)"
+  ],
+  "CA": [
+    "Certificate in Agricultural Science (2nd year BSA)",
+    "Bachelor of Science in Agriculture (BSA)",
+    "Bachelor of Science in Agricultural Technology (BSAgriTech)",
+    "Bachelor of Science in Fisheries (BSF)"
+  ],
+  "CA - Libungan Campus": [
+    "Bachelor of Science in Agriculture (BSA - Libungan)"
+  ],
+  "CHS": [
+    "BS Pharmacy (BS Pharmacy)",
+    "Diploma of Midwifery",
+    "Bachelor of Science in Nursing (BSN)"
+  ],
+  "IMEAS": [
+    "Bachelor of Arts in Islamic Studies (BAIS)",
+    "Bachelor of Science in International Relations (BSIR)"
+  ],
+  "CHK": [
+    "Bachelor of Physical Education (BPE)",
+    "Bachelor of Science in Exercise and Sports Sciences (BSESS)"
+  ],
+  "CED": [
+    "Bachelor of Elementary Education (BEED)",
+    "Bachelor of Secondary Education (BSE)"
+  ],
+  "CED - Libungan Campus": [
+    "Bachelor of Secondary Education (BSE - Libungan)"
+  ],
+  "CED - Aleosan Campus": [
+    "Bachelor of Elementary Education (BEED - Aleosan)"
+  ],
+  "CVM": [
+    "Doctor of Veterinary Medicine (DVM)",
+    "BS Veterinary Technology (BS Vet Tech)"
+  ],
+  "CVM - Aleosan Campus": [
+    "BS Veterinary Technology (BS Vet Tech Aleosan)"
+  ],
+  "CTI": [
+    "Bachelor of Science in Industrial Technology (BSIT)",
+    "Bachelor of Technical-Vocational Teacher Education (BTVTEd)"
+  ],
+  "MED": [
+    "Doctor of Medicine"
+  ],
+  "COL": [
+    "Juris Doctor"
+  ],
+  "Graduate School": [
+    "PhD in Agricultural Sciences major in Crop Production and Management",
+    "PhD in Agricultural Sciences major in Animal Science",
+    "PhD in Education Major in Mathematics",
+    "PhD in Education Major in Biology",
+    "PhD in Education Major in Applied Linguistics",
+    "PhD in Education Major in Filipino",
+    "PhD in Extension Education",
+    "PhD in Rural Development",
+    "EdD Major in Educational Management",
+    "MS in Biology",
+    "MS in Plant Breeding",
+    "MS in Horticulture",
+    "MS in Animal Science",
+    "MS in Agronomy",
+    "MS in Crop Protection",
+    "MS in Agriculture and Biosystems Engineering",
+    "MS in Rural Economic Development",
+    "MST Biology",
+    "MST Chemistry",
+    "MST Mathematics",
+    "MST Physics",
+    "MAED Major in Educational Management",
+    "MAED Major in Elementary Education",
+    "MAED Major in Social Sciences",
+    "MALT Filipino",
+    "MALT English",
+    "MS in Extension Education",
+    "Master in Public Administration",
+    "MA in Home Economics",
+    "MA in Teaching Industrial Arts",
+    "Master in Information Systems",
+    "Master of Eng'g. in Rural Infrastructure Engineering",
+    "MS Agricultural Economics"
+  ],
+  "CSM": [
+    "Bachelor of Science in Environmental Science (BSEnS)",
+    "Bachelor of Science in Chemistry (BSChem)",
+    "Bachelor of Science in Microbiology(BSMicrobio)",
+    "Bachelor of Science in Biology (BSBio)",
+    "Bachelor of Science in Applied Mathematics (BSAM)",
+    "Bachelor of Science in Applied Physics (BSAP)"
+  ],
+  "CEIT": [
+    "Bachelor of Science in Agricultural and Biosystems Engineering (BSABE)",
+    "Bachelor of Science in Civil Engineering (BSCE)",
+    "Bachelor of Science in Computer Engineering (BSCpE)",
+    "Bachelor of Science in Computer Science (BSCS)",
+    "Bachelor of Science in Electronics Engineering (BSEcE)",
+    "Bachelor of Science in Information Systems (BS InfoSys)",
+    "Bachelor of Library and Information Science (BLIS)"
+  ]
+}

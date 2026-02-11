@@ -60,6 +60,7 @@ interface Analytics {
   packageBreakdown: { A: number; B: number; C: number }
   collegeBreakdown: Record<string, { amount: number; studentCount: number }>
   staffBreakdown: Record<string, { name: string; amount: number; transactionCount: number }>
+
   dailyTrend: { date: string; amount: number }[]
 }
 
@@ -303,6 +304,26 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
+
+  // --- Data ---
+  const fetchLedger = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/transactions`)
+      setLedger(res.data)
+    } catch (err) {
+      console.error('Fetch Ledger Error:', err)
+    }
+  }
+
+  const fetchAnalytics = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/analytics`)
+      setAnalytics(res.data)
+    } catch (err) {
+      console.error('Fetch Analytics Error:', err)
+    }
+  }
+
   // Fetch ledger when logged in
   useEffect(() => {
     if (isLoggedIn) {
@@ -349,24 +370,7 @@ function App() {
     setIsLoggedIn(false)
   }
 
-  // --- Data ---
-  const fetchLedger = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/transactions`)
-      setLedger(res.data)
-    } catch (err) {
-      console.error('Fetch Ledger Error:', err)
-    }
-  }
 
-  const fetchAnalytics = async () => {
-    try {
-      const res = await axios.get(`${API_URL}/analytics`)
-      setAnalytics(res.data)
-    } catch (err) {
-      console.error('Fetch Analytics Error:', err)
-    }
-  }
 
   // Fetch analytics when switching to analytics view
   useEffect(() => {
@@ -385,8 +389,68 @@ function App() {
         setFirstName(exactMatch.firstName)
         setLastName(exactMatch.lastName)
         setMiddleInitial(exactMatch.middleInitial || '')
-        setCollege(exactMatch.college)
-        setProgram(exactMatch.program)
+
+        // Normalize College (DB 'CBDEM-LC' -> App 'CBDEM')
+        // Note: If dropdown has 'CBDEM - Libungan Campus', we might need to map to THAT if we want specific campus.
+        // But if COLLEGE_SYNONYMS maps 'CBDEM-LC' -> 'CBDEM', then we select the general 'CBDEM'.
+        // If the user wants specific campus, we need to adjust `COLLEGE_SYNONYMS` or logic.
+        // For now, let's try to find an EXACT match in COLLEGE_LIST first, then fallback to normalized.
+        let matchedCollege = exactMatch.college;
+        if (!COLLEGES.includes(matchedCollege)) {
+          matchedCollege = normalizeCollege(matchedCollege);
+          // If still not in list, try finding a partial match in keys (e.g. if DB has 'CBDEM-LC' and key is 'CBDEM - Libungan Campus')
+          if (!COLLEGES.includes(matchedCollege)) {
+            const potentialMatch = COLLEGES.find(c => c.includes(matchedCollege) || matchedCollege.includes(c) || (matchedCollege.includes('Libungan') && c.includes('Libungan')));
+            if (potentialMatch) matchedCollege = potentialMatch;
+          }
+        }
+        setCollege(matchedCollege)
+
+        // Normalize Program
+        // DB might have "Bachelor of Science in ... (BSBA)", or just "BSBA", or "Bachelor of Science..." without abbr.
+        // Dropdown expects the FULL string found in `COLLEGE_PROGRAMS[college]`.
+        // Dropdown expects the FULL string found in `COLLEGE_PROGRAMS[college]`.
+        const matchedProgram = exactMatch.program;
+        const availablePrograms = COLLEGE_PROGRAMS[matchedCollege] || [];
+
+
+        // 1. Try exact match
+        const pExact = availablePrograms.find(p => p === matchedProgram);
+        if (pExact) console.log('DEBUG: Found Exact Match:', pExact);
+
+        // 2. Try match by Abbreviation (Robust)
+        const pAbbr = availablePrograms.find(p => {
+          const match = p.match(/\(([^)]+)\)/);
+          if (match) {
+            const acronym = match[1].trim();
+            const target = (matchedProgram || '').trim();
+            const isMatch = acronym === target || acronym.toLowerCase() === target.toLowerCase();
+            if (isMatch) console.log('DEBUG: Found Abbr Match:', p, 'Acronym:', acronym);
+            return isMatch;
+          }
+          return false;
+        });
+
+        // 3. Try match by start/inclusion (fuzzy)
+        const pFuzzy = availablePrograms.find(p => {
+          const val = (matchedProgram || '').toLowerCase().trim();
+          const opt = p.toLowerCase();
+          const isMatch = opt.includes(val) || val.includes(opt);
+          if (isMatch) console.log('DEBUG: Found Fuzzy Match:', p);
+          return isMatch;
+        });
+
+        const finalProgram = pExact || pAbbr || pFuzzy || matchedProgram;
+
+        // Fix: Dropdown uses the Acronym/Value as the key, so we must set `program` to that value, not the full string.
+        let programValue = finalProgram;
+        if (finalProgram) {
+          const match = finalProgram.match(/\(([^)]+)\)/);
+          if (match) programValue = match[1];
+        }
+        setProgram(programValue);
+        // Ensure we force the dropdown to re-render or pick up the value
+
         setSection(exactMatch.section)
         setYearLevel(exactMatch.yearLevel || 1)
         // Store balance for display
@@ -668,8 +732,49 @@ function App() {
             setStudentId(tx.student.id);
             setFirstName(tx.student.firstName);
             setLastName(tx.student.lastName);
-            setCollege(tx.student.college);
-            setProgram(tx.student.program);
+
+            // INTELLIGENT MATCHING FOR EDIT (From searchStudentById logic)
+            // 1. Normalize College
+            let matchedCollege = tx.student.college;
+            // Try to conform to the keys in COLLEGE_PROGRAMS
+            if (!COLLEGES.includes(matchedCollege)) {
+              matchedCollege = normalizeCollege(matchedCollege);
+              // Fallback fuzzy search if normalization didn't hit a key
+              if (!COLLEGES.includes(matchedCollege)) {
+                const potentialMatch = COLLEGES.find(c => c.includes(matchedCollege) || matchedCollege.includes(c));
+                if (potentialMatch) matchedCollege = potentialMatch;
+              }
+            }
+            setCollege(matchedCollege);
+
+            // 2. Normalize Program based on the RESOLVED College
+            // 2. Normalize Program based on the RESOLVED College
+            const matchedProgram = tx.student.program;
+            const availablePrograms = COLLEGE_PROGRAMS[matchedCollege] || [];
+
+            // Try exact match
+            const pExact = availablePrograms.find(p => p === matchedProgram);
+
+            // Try match by Abbreviation (Robust)
+            const pAbbr = availablePrograms.find(p => {
+              const match = p.match(/\(([^)]+)\)/);
+              if (match) {
+                const acronym = match[1].trim();
+                const target = (matchedProgram || '').trim();
+                return acronym === target || acronym.toLowerCase() === target.toLowerCase();
+              }
+              return false;
+            });
+
+            // Try match by start/inclusion (fuzzy)
+            const pFuzzy = availablePrograms.find(p => {
+              const val = (matchedProgram || '').toLowerCase().trim();
+              const opt = p.toLowerCase();
+              return opt.includes(val) || val.includes(opt);
+            });
+
+            setProgram(pExact || pAbbr || pFuzzy || matchedProgram);
+
             setYearLevel(tx.student.yearLevel);
             setPackageType(tx.student.packageType || 'A');
             setPaymentMode(tx.paymentMode);
@@ -733,7 +838,7 @@ function App() {
       tx.orNumber.toLowerCase().includes(searchQuery.toLowerCase())
 
     // Normalize college from DB to match Filter (which uses keys from COLLEGE_PROGRAMS)
-    const txCollege = normalizeCollege(tx.student.college);
+    // const txCollege = normalizeCollege(tx.student.college);
     // Partial match to handle "CASS" vs "CASS - Libungan" if desired, or strict match
     // Let's do: if filter is 'All', pass. If filter is selected, check if txCollege starts with filter or equals it.
     // Actually, simple equality on normalized value is safest if keys align.
@@ -1252,7 +1357,14 @@ function App() {
                       {['A', 'B', 'C'].map((pkg) => (
                         <button
                           key={pkg}
-                          onClick={() => setPackageType(pkg)}
+                          onClick={() => {
+                            setPackageType(pkg);
+                            // Auto-fill amount based on remaining balance
+                            const price = PACKAGES[pkg] || 0;
+                            const paid = parseFloat(studentTotalPaid || '0');
+                            const toPay = Math.max(0, price - paid);
+                            setAmountPaid(toPay.toString());
+                          }}
                           className={`py-3 px-2 rounded-lg font-bold text-sm transition-all border-2 ${packageType === pkg
                             ? 'border-[#283329] text-[#283329] bg-white shadow-md transform scale-105'
                             : 'border-transparent bg-gray-50 text-gray-500 opacity-50 hover:opacity-100 hover:border-gray-200'}`}
@@ -1568,26 +1680,31 @@ function App() {
                   <h3 className="font-bold text-gray-800 mb-4">Staff Performance</h3>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
-                      <thead className="bg-gray-50 text-gray-600 font-bold text-xs uppercase">
-                        <tr>
-                          <th className="p-3 border-b border-gray-200">Staff Name</th>
-                          <th className="p-3 border-b border-gray-200 text-center">Students Handled</th>
-                          <th className="p-3 border-b border-gray-200 text-right">Total Collected</th>
+                      <thead>
+                        <tr className="border-b border-gray-200">
+                          <th className="p-3 text-sm font-bold text-gray-600">Staff Name</th>
+                          <th className="p-3 text-sm font-bold text-gray-600 text-right">Transactions</th>
+                          <th className="p-3 text-sm font-bold text-gray-600 text-right">Total Collected</th>
                         </tr>
                       </thead>
-                      <tbody className="text-sm text-gray-700">
-                        {Object.values(analytics.staffBreakdown).map((staff: any) => (
-                          <tr key={staff.name} className="hover:bg-gray-50 border-b border-gray-100 last:border-0">
-                            <td className="p-3 font-medium">{staff.name}</td>
-                            <td className="p-3 text-center">{staff.transactionCount}</td>
-                            <td className="p-3 text-right font-mono font-bold">₱{staff.amount.toLocaleString()}</td>
-                          </tr>
-                        ))}
+                      <tbody>
+                        {Object.values(analytics.staffBreakdown)
+                          .sort((a, b) => b.amount - a.amount)
+                          .map((staff, i) => (
+                            <tr key={i} className="hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                              <td className="p-3 text-sm font-medium text-gray-800">{staff.name}</td>
+                              <td className="p-3 text-sm text-gray-600 text-right">{staff.transactionCount}</td>
+                              <td className="p-3 text-sm font-bold text-[#283329] text-right">₱{staff.amount.toLocaleString()}</td>
+                            </tr>
+                          ))}
                       </tbody>
                     </table>
                   </div>
                 </div>
               )}
+
+
+
             </>
           ) : (
             <div className="flex items-center justify-center h-64">

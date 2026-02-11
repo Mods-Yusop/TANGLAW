@@ -16,6 +16,12 @@ const mapToCollegeGroup = (dbCollege: string): string => {
     if (!dbCollege) return 'Unknown';
     const c = dbCollege.trim();
 
+    // Acronyms from DB
+    if (c === 'GS') return 'Grad School';
+    if (c.endsWith('-LC')) return 'Libungan';
+    if (c.endsWith('-MC')) return 'Mlang';
+    if (c.endsWith('-AL') || c.endsWith('-AC')) return 'Aleosan';
+
     if (c.includes('Libungan')) return 'Libungan';
     if (c.includes('Mlang')) return 'Mlang';
     if (c.includes('Aleosan')) return 'Aleosan';
@@ -24,8 +30,7 @@ const mapToCollegeGroup = (dbCollege: string): string => {
     // Exact matches or standard mappings
     if (c === 'MED') return 'MEDICINE';
     if (c === 'Medicine') return 'MEDICINE';
-    // Default: return the college itself if in the list, otherwise it might be "Unknown" or just keep it
-    // For now, if it's not one of the special groups, we assume it's the standard acronym (CASS, CBDEM, etc.)
+
     return c;
 };
 
@@ -77,6 +82,8 @@ router.get('/', async (req, res) => {
         // Staff Performance Breakdown
         const staffBreakdown: Record<string, { name: string; amount: number; transactionCount: number }> = {};
 
+
+
         transactions.forEach(tx => {
             // College Stats
             const rawCollege = tx.student.college;
@@ -94,6 +101,8 @@ router.get('/', async (req, res) => {
             }
             staffBreakdown[staffName].amount += parseFloat(tx.amountPaid.toString());
             staffBreakdown[staffName].transactionCount += 1;
+
+
         });
 
         // Set student counts
@@ -131,7 +140,8 @@ router.get('/', async (req, res) => {
             partialPaid,
             packageBreakdown: { A: packageA, B: packageB, C: packageC },
             collegeBreakdown,
-            staffBreakdown, // Include in response
+            staffBreakdown,
+
             dailyTrend
         });
 
