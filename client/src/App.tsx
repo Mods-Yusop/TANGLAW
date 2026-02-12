@@ -601,11 +601,14 @@ function App() {
     const match = fullProgram.match(/\(([^)]+)\)/);
     if (match) return match[1]; // Found inside ()
 
+    const trimmed = fullProgram.trim();
+
     // Reverse lookup
     for (const programs of Object.values(COLLEGE_PROGRAMS)) {
-      const found = programs.find(p => p.includes(fullProgram) || p.startsWith(fullProgram));
-      if (found) {
-        const m = found.match(/\(([^)]+)\)/);
+      // 1. Try exact match of abbreviation in parens
+      const exact = programs.find(p => p.includes(`(${trimmed})`));
+      if (exact) {
+        const m = exact.match(/\(([^)]+)\)/);
         if (m) return m[1];
       }
     }

@@ -149,3 +149,4 @@ bootstrap();
 
 // Keep process alive hack
 setInterval(() => { }, 10000);
+// Restart trigger
