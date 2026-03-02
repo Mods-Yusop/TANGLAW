@@ -521,7 +521,7 @@ function App() {
     if (!studentId || !firstName || !lastName) return alert('Please complete student details.')
     if (!amountPaid) return alert('Enter amount.')
     if (!orNumber) return alert('Enter OR Number.')
-    if (orNumber.length !== 7) return alert('OR Number must be exactly 7 digits.')
+    if (orNumber.length > 8) return alert('OR Number must not exceed 8 characters.')
 
     // Open Confirmation Modal
     setIsConfirmModalOpen(true);
@@ -1420,14 +1420,14 @@ function App() {
                         <input
                           type="text"
                           placeholder="Enter Ref #"
-                          maxLength={7}
+                          maxLength={8}
                           value={orNumber}
                           onChange={(e) => {
-                            // Strickland digits only and max 7 chars
-                            const val = e.target.value.replace(/\D/g, '').slice(0, 7);
+                            // Alphanumeric and dash only and max 8 chars
+                            const val = e.target.value.replace(/[^a-zA-Z0-9-]/g, '').toUpperCase().slice(0, 8);
                             setOrNumber(val);
                           }}
-                          className={`w-full p-2.5 border rounded-lg text-sm ${orNumber && orNumber.length !== 7 ? 'border-red-500 focus:border-red-500' : 'border-gray-300'}`}
+                          className={`w-full p-2.5 border rounded-lg text-sm ${orNumber && orNumber.length > 8 ? 'border-red-500 focus:border-red-500' : 'border-gray-300'}`}
                         />
                       </div>
                       {/* Amount */}
@@ -1470,9 +1470,9 @@ function App() {
               <div className="p-6 border-t border-gray-200 bg-gray-50">
                 <button
                   onClick={handleSubmitTransaction}
-                  disabled={!!(orNumber && orNumber.length !== 7)}
-                  style={isEditing ? {} : { background: (orNumber && orNumber.length !== 7) ? '#ccc' : 'linear-gradient(to right, #586447, #283329)', border: (orNumber && orNumber.length !== 7) ? 'none' : '2px solid #757f66' }}
-                  className={`w-full py-3.5 ${isEditing ? 'bg-orange-500 hover:bg-orange-600' : ''} text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all text-sm uppercase tracking-wide flex items-center justify-center gap-2 ${(orNumber && orNumber.length !== 7) ? 'cursor-not-allowed opacity-50' : ''}`}
+                  disabled={!!(orNumber && orNumber.length > 8)}
+                  style={isEditing ? {} : { background: (orNumber && orNumber.length > 8) ? '#ccc' : 'linear-gradient(to right, #586447, #283329)', border: (orNumber && orNumber.length > 8) ? 'none' : '2px solid #757f66' }}
+                  className={`w-full py-3.5 ${isEditing ? 'bg-orange-500 hover:bg-orange-600' : ''} text-white font-bold rounded-xl shadow-lg active:scale-95 transition-all text-sm uppercase tracking-wide flex items-center justify-center gap-2 ${(orNumber && orNumber.length > 8) ? 'cursor-not-allowed opacity-50' : ''}`}
                 >
                   {isEditing ? 'Update Changes' : (isNewStudent ? 'Confirm & Save Student' : 'Confirm Transaction')}
                 </button>

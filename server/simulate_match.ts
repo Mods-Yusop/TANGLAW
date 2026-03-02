@@ -1,8 +1,9 @@
-
+@@
 import fs from 'fs';
 import path from 'path';
 
-const colleges = JSON.parse(fs.readFileSync('colleges_dump.json', 'utf8'));
+const dumpPath = path.join(__dirname, 'colleges_dump.json');
+const colleges = JSON.parse(fs.readFileSync(dumpPath, 'utf8'));
 const chsPrograms = colleges.filter((row: any) => row[0] === 'CHS').map((row: any) => row[1]);
 
 console.log('CHS Programs in App:', chsPrograms);

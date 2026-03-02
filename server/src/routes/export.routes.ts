@@ -64,7 +64,9 @@ router.get('/csv', async (req, res) => {
                 (a.student.program || '').localeCompare(b.student.program || '')
             );
 
-            const sheet = workbook.addWorksheet(college);
+            // Excel worksheet names cannot contain certain characters or exceed 31 characters
+            const safeSheetName = college.replace(/[*?:\/\\[\\]]/g, '_').substring(0, 31);
+            const sheet = workbook.addWorksheet(safeSheetName || 'Unknown');
 
             // Header info
             sheet.addRow(['TANGLAW Yearbook 2026 - Payment Collection Report']);
